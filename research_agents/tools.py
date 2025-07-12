@@ -7,6 +7,9 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from temporalio import activity, workflow
 
+with workflow.unsafe.imports_passed_through():
+    from config import settings
+
 # Set up logging
 logger = logging.getLogger(__name__)
 

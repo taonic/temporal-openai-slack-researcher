@@ -7,7 +7,6 @@ from pydantic import BaseModel
 from research_agents.plan_agent import init_plan_agent
 from research_agents.execution_agent import init_execution_agent
 from research_agents.plan_eval_agent import init_plan_eval_agent
-from research_agents.execution_eval_agent import init_execution_eval_agent
 from research_agents.types import EvaluationFeedback, PlanningResult
 
 with workflow.unsafe.imports_passed_through():
@@ -71,6 +70,9 @@ class ConversationWorkflow:
             self.input_items = result.to_input_list()
         workflow.set_current_details("\n\n".join(self.chat_history))
 
+        if isinstance(result.final_output, PlanningResult):
+            return result.final_output.clarifying_questions
+        
         return result.final_output
     
     async def _run_with_evaluation(self) -> RunResult:
@@ -79,7 +81,7 @@ class ConversationWorkflow:
         plan_result = None
         exec_result = None
         
-        # 1. Planning phase
+        # 1. Planning phase with LLM-as-a-judge
         for _ in range(self.max_evaluation_loops):
             # Run plan agent
             plan_input = self.input_items
@@ -112,31 +114,13 @@ class ConversationWorkflow:
             plan_input.append({"content": f"Plan evaluation feedback: {result.feedback}", "role": "user"})
         
         # 2. Execution phase
-        for _ in range(self.max_evaluation_loops):
-            # Execute plan
-            self.chain_of_thoughts.append("Ok, let me take the feedback and execute the plan. This may take a few moments.")
-            exec_input = plan_result.to_input_list()
-            exec_result = await Runner.run(
-                self.execution_agent,
-                exec_input,
-                run_config=self.run_config,
-            )
-            
-            # Evaluate execution
-            eval_result = await Runner.run(
-                self.execution_eval_agent,
-                exec_result.to_input_list(),
-                run_config=self.run_config
-            )
-            result: EvaluationFeedback = eval_result.final_output
-            
-            # Move on if passed
-            if not self.evaluation_enabled or result.passed:
-                break
-            
-            # Share feedback
-            exec_input = exec_result.to_input_list()
-            exec_input.append({"content": f"Report evaluation feedback: {result.feedback}", "role": "user"})
+        self.chain_of_thoughts.append("Ok, let me take the feedback and execute the plan. This may take a few moments.")
+        exec_input = plan_result.to_input_list()
+        exec_result = await Runner.run(
+            self.execution_agent,
+            exec_input,
+            run_config=self.run_config,
+        )
         
         return exec_result
 

@@ -29,6 +29,8 @@ Your job is to plan the search based on the following steps.
 	• When channels cannot be determined from the query, ask the user which channels they want to search by using PromptUser.
 	• If the question is about customers, select channel names prefixed with support-.
 
+IMPORTANT: If the user's question is not clear enough or lacks sufficient detail to create an effective search plan, return clarifying questions in the clarifying_questions field and set human_input_required to true. Otherwise, return the detailed search plan in clarifying_questions field and set human_input_required to false.
+
 Current date and time: {now.isoformat()}
 """
 
@@ -39,5 +41,5 @@ def init_plan_agent(now: datetime):
         tools=[
             workflow.activity_as_tool(get_slack_channels, start_to_close_timeout=timedelta(seconds=10)),
         ],
-        #output_type=PlanningResult,
+        output_type=PlanningResult,
     )
