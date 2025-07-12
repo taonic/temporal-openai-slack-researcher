@@ -30,17 +30,15 @@ class MessageHandler:
 
     async def _poll_thoughts_to_slack(self, session: Session, say: Callable) -> None:
         """Poll thoughts from the agent session and send them to Slack."""
-        pass # todo: discuss if this should be supported in the future
-        # try:
-        #     while True:
-        #         thoughts = await session.thoughts()
-        #         if thoughts:
-        #             for line in thoughts:
-        #                 formatted_text = slackStyle.convert(f"🧠 {line}")
-        #                 await say(formatted_text)
-        #         await asyncio.sleep(1)
-        # except asyncio.CancelledError:
-        #     pass
+        try:
+            while True:
+                thoughts = await session.thoughts()
+                if thoughts:
+                    for line in thoughts:
+                        await say((f"🧠 {slackStyle.convert(line)}"))
+                await asyncio.sleep(1)
+        except asyncio.CancelledError:
+            pass
 
     def _register_handlers(self, slack_app: AsyncApp) -> None:
         """Register event handlers for the Slack app."""
@@ -59,7 +57,7 @@ class MessageHandler:
             if not text:
                 return
 
-            await say(slackStyle.convert("Hold on… my brain's fetching the info! Might take up to 30 seconds 🐢💫"))
+            await say(slackStyle.convert("Kindly give me a moment 🐢💫"))
             poll = asyncio.create_task(self._poll_thoughts_to_slack(session, say))
             try:
                 reply = await session.prompt(text) # This will block until the agent/workflow responds

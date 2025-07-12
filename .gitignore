@@ -10,3 +10,9 @@ wheels/
 .venv
 
 .vscode/
+.env
+.env.development
+.env.staging
+.env.production
+deployment.yaml
+deploy

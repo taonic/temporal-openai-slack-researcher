@@ -16,6 +16,8 @@ from temporal.conversation_workflow import (
     ProcessUserMessageInput,
 )
 
+from config import settings
+
 class Session:
     """
     Session manages the lifecycle of an agent workflow.
@@ -39,6 +41,7 @@ class Session:
         """Start the agent workflow."""
         await self.client.start_workflow(
             ConversationWorkflow.run,
+            args=[settings.model_name],
             id=self.workflow_id,
             task_queue=self.task_queue,
             id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING
@@ -73,7 +76,7 @@ class Session:
                 raise RuntimeError("Session not started")
 
             handle = self.client.get_workflow_handle(self.workflow_id)
-            input = ProcessUserMessageInput(user_input=prompt, chat_length=self.watermark)
+            input = ProcessUserMessageInput(user_input=prompt)
             result = await handle.execute_update(
                 ConversationWorkflow.process_user_message,
                 input,
