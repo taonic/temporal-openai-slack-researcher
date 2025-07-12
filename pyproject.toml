@@ -1,17 +1,13 @@
 [project]
-name = "openai-sdk-gemini"
+name = "temporal-openai-slack-researcher"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "google-api-python-client>=2.173.0",
-    "google-auth-httplib2>=0.2.0",
-    "google-auth-oauthlib>=1.2.2",
     "openai-agents[litellm]>=0.0.19",
     "slack-sdk>=3.35.0",
-    "openai-agents >= 0.0.19",
-    "temporalio[openai-agents] >= 1.14.0",
+    "temporalio[openai-agents] >= 1.14.1",
     "pydantic-settings>=2.10.0",
     "slackstyler>=0.0.3",
     "slack-bolt>=1.23.0",
