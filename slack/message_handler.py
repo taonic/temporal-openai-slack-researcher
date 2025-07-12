@@ -1,8 +1,9 @@
 import asyncio
 import logging
-from typing import Callable
+from typing import List, Dict
 
 from slack_bolt.async_app import AsyncApp
+from slack_bolt import SetStatus, Say, SetSuggestedPrompts
 from slack_bolt.adapter.socket_mode.async_handler import AsyncSocketModeHandler
 from slackstyler import SlackStyler
 
@@ -28,10 +29,11 @@ class MessageHandler:
         await handler.start_async()
 
 
-    async def _poll_thoughts_to_slack(self, session: Session, say: Callable) -> None:
+    async def _poll_thoughts_to_slack(self, session: Session, say: Say, set_status: SetStatus) -> None:
         """Poll thoughts from the agent session and send them to Slack."""
         try:
             while True:
+                await set_status("thinking...")
                 thoughts = await session.thoughts()
                 if thoughts:
                     for line in thoughts:
@@ -43,8 +45,9 @@ class MessageHandler:
     def _register_handlers(self, slack_app: AsyncApp) -> None:
         """Register event handlers for the Slack app."""
         @slack_app.event("message")
-        async def handle_dm(event: dict, say: callable, logger: logging.Logger):
-            logger.debug(event)
+        async def handle_dm(event: dict, say: Say, set_status: SetStatus, logger: logging.Logger):
+            await set_status("thinking...")
+            
             if event.get("channel_type") != "im":
                 return
             if event.get("subtype") or event.get("bot_id"):
@@ -58,8 +61,9 @@ class MessageHandler:
                 return
 
             await say(slackStyle.convert("Kindly give me a moment 🐢💫"))
-            poll = asyncio.create_task(self._poll_thoughts_to_slack(session, say))
+            poll = asyncio.create_task(self._poll_thoughts_to_slack(session, say, set_status))
             try:
+                await set_status("thinking...")
                 reply = await session.prompt(text) # This will block until the agent/workflow responds
                 await say(slackStyle.convert(reply))
             finally:
@@ -70,5 +74,21 @@ class MessageHandler:
             logger.info(body)
 
         @slack_app.event("assistant_thread_started")
-        async def handle_assistant_thread_started_events(body, logger):
-            logger.info(body)
+        async def handle_assistant_thread_started_events(body, say: Say, set_suggested_prompts: SetSuggestedPrompts):
+            await say("How can I help you?")
+
+            prompts: List[Dict[str, str]] = [
+                {
+                    "title": "Summarize sales team conversations about enterprise deals",
+                    "message": "Can you summarize recent sales team conversations about enterprise customer requirements and deal blockers from last week?",
+                },
+                {
+                    "title": "Find engineering discussions on workflow patterns",
+                    "message": "Search for recent engineering discussions about workflow design patterns and best practices in our channels.",
+                },
+                {
+                    "title": "Summarize a thread",
+                    "message": "Let me summarize a thread for you. Note: This only works for public channels, not private channels or DMs.",
+                },
+            ]
+            await set_suggested_prompts(prompts=prompts)

@@ -1,6 +1,10 @@
 from datetime import datetime
 from agents import Agent
 from .types import EvaluationFeedback
+from temporalio import workflow
+
+with workflow.unsafe.imports_passed_through():
+	from config import settings
 
 def get_plan_eval_prompt(now: datetime, pass_threshold: float = 0.67) -> str:
     return f"""
@@ -39,5 +43,6 @@ def init_plan_eval_agent(now: datetime, pass_threshold: float = 0.7):
     return Agent(
         name="Plan Evaluation Agent",
         instructions=get_plan_eval_prompt(now, pass_threshold),
+        model=settings.eval_model_name,
         output_type=EvaluationFeedback,
     )

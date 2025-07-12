@@ -30,15 +30,13 @@ class ProcessUserMessageInput(BaseModel):
 @workflow.defn
 class ConversationWorkflow:
     @workflow.init
-    def __init__(self, model: str = "gpt-4o"):
+    def __init__(self):
         self.run_config: RunConfig = RunConfig(
             trace_include_sensitive_data=False,
-            model=model,
         )
         self.plan_agent: Agent = init_plan_agent(now=workflow.now())
         self.plan_eval_agent: Agent = init_plan_eval_agent(workflow.now())
         self.execution_agent: Agent = init_execution_agent(now=workflow.now())
-        self.execution_eval_agent: Agent = init_execution_eval_agent(now=workflow.now())
         self.chat_history: list[str] = []
         self.chain_of_thoughts: list[str] = []
         self.trace_name: str = "Slack Research Bot"
@@ -47,7 +45,7 @@ class ConversationWorkflow:
         self.max_evaluation_loops: int = 2
 
     @workflow.run
-    async def run(self, model: str = "gpt-4o"):
+    async def run(self):
         await workflow.wait_condition(
             lambda: workflow.info().is_continue_as_new_suggested()
             and workflow.all_handlers_finished()

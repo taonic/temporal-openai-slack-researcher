@@ -41,7 +41,6 @@ class Session:
         """Start the agent workflow."""
         await self.client.start_workflow(
             ConversationWorkflow.run,
-            args=[settings.model_name],
             id=self.workflow_id,
             task_queue=self.task_queue,
             id_conflict_policy=WorkflowIDConflictPolicy.USE_EXISTING

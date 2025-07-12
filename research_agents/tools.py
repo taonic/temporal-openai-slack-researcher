@@ -155,14 +155,14 @@ def _format_search_results(result: SlackSearchResult) -> str:
         ]
 
         for i, match in enumerate(result.matches, 1):
-            user = match.get('user', 'Unknown')
+            user = match.get('username', 'Unknown')
             channel = match.get('channel', {}).get('name', 'unknown-channel')
             text = match.get('text', '')[:200] + ('...' if len(match.get('text', '')) > 200 else '')
             timestamp = match.get('ts', '')
             permalink = match.get('permalink', '')
 
             # Format each result
-            result_text = f"{i}. #{channel} - @{user}"
+            result_text = f"{i}. #{channel} - {user}"
             if timestamp:
                 try:
                     dt = datetime.fromtimestamp(float(timestamp))

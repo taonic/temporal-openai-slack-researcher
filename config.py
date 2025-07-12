@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     temporal_host_port: str = "localhost:7233"
     temporal_task_queue: str = "slack-agent-task-queue"
     model_name: str = "gpt-4o"
+    eval_model_name: str = "gpt-4o-mini"
     log_level: str = "INFO"
     
     class Config:
