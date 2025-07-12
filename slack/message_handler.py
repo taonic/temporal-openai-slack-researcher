@@ -29,11 +29,15 @@ class MessageHandler:
         await handler.start_async()
 
 
+    async def _set_thinking_status(self, set_status: SetStatus) -> None:
+        """Set the status to indicate the bot is thinking."""
+        await set_status("is thinking...")
+
     async def _poll_thoughts_to_slack(self, session: Session, say: Say, set_status: SetStatus) -> None:
         """Poll thoughts from the agent session and send them to Slack."""
         try:
             while True:
-                await set_status("thinking...")
+                await self._set_thinking_status(set_status)
                 thoughts = await session.thoughts()
                 if thoughts:
                     for line in thoughts:
@@ -46,7 +50,7 @@ class MessageHandler:
         """Register event handlers for the Slack app."""
         @slack_app.event("message")
         async def handle_dm(event: dict, say: Say, set_status: SetStatus, logger: logging.Logger):
-            await set_status("thinking...")
+            await self._set_thinking_status(set_status)
             
             if event.get("channel_type") != "im":
                 return
@@ -60,10 +64,9 @@ class MessageHandler:
             if not text:
                 return
 
-            await say(slackStyle.convert("Kindly give me a moment 🐢💫"))
             poll = asyncio.create_task(self._poll_thoughts_to_slack(session, say, set_status))
             try:
-                await set_status("thinking...")
+                await self._set_thinking_status(set_status)
                 reply = await session.prompt(text) # This will block until the agent/workflow responds
                 await say(slackStyle.convert(reply))
             finally:
