@@ -37,7 +37,6 @@ class MessageHandler:
         """Poll thoughts from the agent session and send them to Slack."""
         try:
             while True:
-                await self._set_thinking_status(set_status)
                 thoughts = await session.thoughts()
                 if thoughts:
                     for line in thoughts:
@@ -78,20 +77,19 @@ class MessageHandler:
 
         @slack_app.event("assistant_thread_started")
         async def handle_assistant_thread_started_events(body, say: Say, set_suggested_prompts: SetSuggestedPrompts):
-            await say("How can I help you?")
-
+            title = "I'm your AI research assistant. I can analyze conversations, summarize discussions, and help you find insights from your Slack workspace. How can I help you?"
             prompts: List[Dict[str, str]] = [
                 {
                     "title": "Summarize sales team conversations about enterprise deals",
                     "message": "Can you summarize recent sales team conversations about enterprise customer requirements and deal blockers from last week?",
                 },
                 {
-                    "title": "Find engineering discussions on workflow patterns",
-                    "message": "Search for recent engineering discussions about workflow design patterns and best practices in our channels.",
+                    "title": "Ask about the latest Golang SDK release",
+                    "message": "What's new in the latest Golang SDK release from last month? Can you provide details about new features and improvements?",
                 },
                 {
                     "title": "Summarize a thread",
                     "message": "Let me summarize a thread for you. Note: This only works for public channels, not private channels or DMs.",
                 },
             ]
-            await set_suggested_prompts(prompts=prompts)
+            await set_suggested_prompts(title=title, prompts=prompts)

@@ -2,7 +2,7 @@ import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from temporalio import activity, workflow
@@ -14,28 +14,28 @@ with workflow.unsafe.imports_passed_through():
 logger = logging.getLogger(__name__)
 
 class GetChannelsRequest(BaseModel):
-    include_archived: bool = False
+    include_archived: bool = Field(default=False, description="Whether to include archived channels in the results")
 
 class SlackSearchRequest(BaseModel):
-    query: str
-    channels: Optional[str] = None
-    sort: str = "timestamp"
-    count: int = 40
-    start_time: Optional[str] = None
-    end_time: Optional[str] = None
+    query: str = Field(description="Search query string to find messages")
+    channels: Optional[str] = Field(default=None, description="Comma-separated list of channel names to search in")
+    sort: str = Field(default="timestamp", description="Sort order: 'timestamp' (chronological) or 'score' (relevance)")
+    count: int = Field(default=40, description="Number of results to return (1-100)")
+    start_time: Optional[str] = Field(default=None, description="ISO format start time filter")
+    end_time: Optional[str] = Field(default=None, description="ISO format end time filter")
 
 class SlackSearchResult(BaseModel):
-    query: str
-    total: int
-    matches: List[Dict[str, Any]]
-    pagination: Optional[Dict[str, Any]] = None
-    has_more: bool = False
+    query: str = Field(description="The search query that was executed")
+    total: int = Field(description="Total number of matching messages")
+    matches: List[Dict[str, Any]] = Field(description="List of matching message objects")
+    pagination: Optional[Dict[str, Any]] = Field(default=None, description="Pagination information from Slack API")
+    has_more: bool = Field(default=False, description="Whether there are more results available")
 
 class ThreadInput(BaseModel):
-    thread_url: str
+    thread_url: str = Field(description="Slack thread URL to retrieve messages from")
 
 class GetUserNameRequest(BaseModel):
-    user_id: str
+    user_id: str = Field(description="Slack user ID to get the display name for")
 
 @activity.defn
 def get_slack_channels(request: GetChannelsRequest) -> List[Dict[str, Any]]:
