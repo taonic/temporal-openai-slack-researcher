@@ -50,14 +50,14 @@ async def connect() -> Client:
 
 def init_runtime_with_telemetry() -> Runtime:
     # Setup global tracer for workflow traces
-    provider = TracerProvider(resource=Resource.create({SERVICE_NAME: "temporal-openai-slack-researcher"}))
-    exporter = OTLPSpanExporter(endpoint="http://localhost:4317", insecure=True)
+    provider = TracerProvider(resource=Resource.create({SERVICE_NAME: settings.otel_service_name}))
+    exporter = OTLPSpanExporter(endpoint=settings.otel_endpoint, insecure=True)
     provider.add_span_processor(BatchSpanProcessor(exporter))
     trace.set_tracer_provider(provider)
 
     # Setup SDK metrics to OTel endpoint
     return Runtime(
         telemetry=TelemetryConfig(
-            metrics=OpenTelemetryConfig(url="http://localhost:4317")
+            metrics=OpenTelemetryConfig(url=settings.otel_endpoint)
         )
     )

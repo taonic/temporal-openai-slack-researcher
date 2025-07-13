@@ -24,6 +24,8 @@ class Settings(BaseSettings):
 
     # Misc
     log_level: str = "INFO"
+    otel_endpoint: str = "http://localhost:4317"
+    otel_service_name: str = "temporal-openai-slack-researcher"
     
     class Config:
         extra = "ignore"
