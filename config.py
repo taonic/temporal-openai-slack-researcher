@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     temporal_host_port: str = "localhost:7233"
     temporal_task_queue: str = "slack-agent-task-queue"
     temporal_codec_key: bytes = "" # must be 32 bytes
+    temporal_enable_telemetry: bool = False
 
     # LLM settings
     model_name: str = "gpt-4o"

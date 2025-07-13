@@ -1,5 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
+
+from temporalio.contrib.opentelemetry import TracingInterceptor
 from temporalio.worker import Worker
 from temporalio.contrib.openai_agents import (
     ModelActivity,
@@ -24,6 +26,7 @@ async def worker():
             task_queue=settings.temporal_task_queue,
             workflows=[ConversationWorkflow],
             activity_executor=ThreadPoolExecutor(100),
+            interceptors=[TracingInterceptor()],
             activities=[
                 ModelActivity().invoke_model_activity,
                 get_slack_channels,
