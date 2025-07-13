@@ -56,36 +56,14 @@ class Session:
         handle = self.client.get_workflow_handle(self.workflow_id)
         await handle.terminate()
 
-    async def thoughts(self) -> List[str]:
+    async def prompt(self, prompt: str, thread_ts: str = None, channel_id: str = None) -> any:
         if not self.workflow_id:
             raise RuntimeError("Session not started")
-            
+
         handle = self.client.get_workflow_handle(self.workflow_id)
-        result = await handle.query(
-            ConversationWorkflow.get_chat_history,
-            self.watermark
+        input = ProcessUserMessageInput(user_input=prompt, thread_ts=thread_ts, channel_id=channel_id)
+        result = await handle.execute_update(
+            ConversationWorkflow.process_user_message,
+            input,
         )
-        if result:
-            self.watermark += len(result)
         return result
-
-    async def prompt(self, prompt: str) -> str:
-        try:
-            if not self.workflow_id:
-                raise RuntimeError("Session not started")
-
-            handle = self.client.get_workflow_handle(self.workflow_id)
-            input = ProcessUserMessageInput(user_input=prompt)
-            result = await handle.execute_update(
-                ConversationWorkflow.process_user_message,
-                input,
-            )
-            return result
-        except WorkflowUpdateFailedError:
-            logging.warning("Workflow update failed, trying to fetch chat history.")
-            history = await handle.query(
-                ConversationWorkflow.get_chat_history,
-                reject_condition=QueryRejectCondition.NOT_OPEN,
-            )
-            self.watermark = len(history)
-            return await self.prompt(prompt)

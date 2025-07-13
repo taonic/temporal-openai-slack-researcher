@@ -33,44 +33,7 @@ class MessageHandler:
         """Set the status to indicate the bot is thinking."""
         await set_status("is thinking...")
 
-    async def _poll_thoughts_to_slack(self, session: Session, say: Say, set_status: SetStatus) -> None:
-        """Poll thoughts from the agent session and send them to Slack."""
-        try:
-            while True:
-                thoughts = await session.thoughts()
-                if thoughts:
-                    for line in thoughts:
-                        await say((f"🧠 {slackStyle.convert(line)}"))
-                await asyncio.sleep(1)
-        except asyncio.CancelledError:
-            pass
-
     def _register_handlers(self, slack_app: AsyncApp) -> None:
-        """Register event handlers for the Slack app."""
-        @slack_app.event("message")
-        async def handle_dm(event: dict, say: Say, set_status: SetStatus, logger: logging.Logger):
-            await self._set_thinking_status(set_status)
-            
-            if event.get("channel_type") != "im":
-                return
-            if event.get("subtype") or event.get("bot_id"):
-                return
-
-            slack_session_id = event["thread_ts"]
-            session = await self.session_manager.get_session(slack_session_id)
-
-            text = (event.get("text") or "").strip()
-            if not text:
-                return
-
-            poll = asyncio.create_task(self._poll_thoughts_to_slack(session, say, set_status))
-            try:
-                await self._set_thinking_status(set_status)
-                reply = await session.prompt(text) # This will block until the agent/workflow responds
-                await say(slackStyle.convert(reply))
-            finally:
-                poll.cancel()
-
         @slack_app.event("assistant_thread_context_changed")
         async def handle_assistant_thread_context_changed_events(body, logger):
             logger.info(body)
@@ -80,8 +43,8 @@ class MessageHandler:
             title = "I'm your AI research assistant. I can analyze conversations, summarize discussions, and help you find insights from your Slack workspace. How can I help you?"
             prompts: List[Dict[str, str]] = [
                 {
-                    "title": "Show me the latest blogs on Agentic SDK from last month",
-                    "message": "Show me the latest blogs on Agentic SDK from last month",
+                    "title": "Show me the latest blog posts from Temporal on Agentic AI from last month",
+                    "message": "Show me the latest blog posts from Temporal on Agentic AI from last month",
                 },
                 {
                     "title": "Ask about the latest Golang SDK release",
@@ -89,3 +52,22 @@ class MessageHandler:
                 },
             ]
             await set_suggested_prompts(title=title, prompts=prompts)
+
+        """Register event handlers for the Slack app."""
+        @slack_app.event("message")
+        async def handle_dm(event: dict, say: Say, set_status: SetStatus, logger: logging.Logger):
+            await self._set_thinking_status(set_status)
+            
+            if event.get("channel_type") != "im" or event.get("subtype") or event.get("bot_id"):
+                return
+
+            thread_ts = event["thread_ts"]
+            channel_id = event["channel"]
+
+            text = (event.get("text") or "").strip()
+            if not text:
+                return
+            
+            session = await self.session_manager.get_session(thread_ts)
+            # This will block until the agent/workflow responds
+            await session.prompt(prompt=text, thread_ts=thread_ts, channel_id=channel_id)

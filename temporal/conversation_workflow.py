@@ -6,8 +6,8 @@ from pydantic import BaseModel
 
 from research_agents.plan_agent import init_plan_agent, PlanningResult
 from research_agents.execution_agent import init_execution_agent
-from research_agents.plan_eval_agent import init_plan_eval_agent
-from research_agents.types import EvaluationFeedback
+from research_agents.plan_eval_agent import init_plan_eval_agent, EvaluationFeedback
+from temporal.activities import post_to_slack, PostToSlackInput
 
 with workflow.unsafe.imports_passed_through():
     from agents import (
@@ -25,6 +25,8 @@ with workflow.unsafe.imports_passed_through():
 
 class ProcessUserMessageInput(BaseModel):
     user_input: str
+    thread_ts: str = None
+    channel_id: str = None
 
 
 @workflow.defn
@@ -38,11 +40,12 @@ class ConversationWorkflow:
         self.plan_eval_agent: Agent = init_plan_eval_agent(workflow.now())
         self.execution_agent: Agent = init_execution_agent(now=workflow.now())
         self.chat_history: list[str] = []
-        self.chain_of_thoughts: list[str] = []
         self.trace_name: str = "Slack Research Bot"
         self.input_items = []
         self.evaluation_enabled: bool = True
         self.max_evaluation_loops: int = 2
+        self.thread_ts: str = None
+        self.channel_id: str = None
 
     @workflow.run
     async def run(self):
@@ -52,12 +55,22 @@ class ConversationWorkflow:
         )
         workflow.continue_as_new(self.input_items)
 
-    @workflow.query
-    def get_chat_history(self, watermark: int=0) -> list[str]:
-        return self.chain_of_thoughts[watermark:]
+    async def _post_to_slack(self, message: str) -> None:
+        await workflow.execute_activity(
+            post_to_slack,
+            PostToSlackInput(
+                message=message,
+                channel_id=self.channel_id,
+                thread_ts=self.thread_ts
+            ),
+            start_to_close_timeout=workflow.timedelta(seconds=30)
+        )
 
     @workflow.update
-    async def process_user_message(self, input: ProcessUserMessageInput) -> str:
+    async def process_user_message(self, input: ProcessUserMessageInput) -> None:
+        self.thread_ts = input.thread_ts
+        self.channel_id = input.channel_id
+        
         self.chat_history.append(f"User: {input.user_input}")
         with trace(self.trace_name, group_id=workflow.info().workflow_id):
             self.input_items.append({"content": input.user_input, "role": "user"})
@@ -69,9 +82,11 @@ class ConversationWorkflow:
         workflow.set_current_details("\n\n".join(self.chat_history))
 
         if isinstance(result.final_output, PlanningResult):
-            return result.final_output.clarifying_questions
-        
-        return result.final_output
+            await self._post_to_slack(result.final_output.clarifying_questions)
+        elif isinstance(result.final_output, MessageOutputItem):
+            await self._post_to_slack(ItemHelpers.text_message_output(result.final_output))
+        else:
+            await self._post_to_slack(str(result.final_output))
     
     async def _run_with_evaluation(self) -> RunResult:
         """Run with explicit evaluation flow control."""
@@ -92,7 +107,8 @@ class ConversationWorkflow:
             if result.human_input_required:
                 return plan_result
             else:
-                self.chain_of_thoughts.append(f"This is what I'm planning to do: \n{result.plan}")
+                message = f"This is what I'm planning to do: \n{result.plan}"
+                await self._post_to_slack(message)
         
             # Evaluate plan
             eval_result = await Runner.run(
@@ -101,7 +117,8 @@ class ConversationWorkflow:
                 run_config=self.run_config,
             )
             result: EvaluationFeedback = eval_result.final_output
-            self.chain_of_thoughts.append(f'The plan has been reviewed by my team mate with the following comments: \n{result.feedback}')
+            message = f'The plan has been reviewed by my team mate with the following comments: \n{result.feedback}'
+            await self._post_to_slack(message)
             
             # Move on if passed
             if not self.evaluation_enabled or result.passed:
@@ -112,7 +129,8 @@ class ConversationWorkflow:
             plan_input.append({"content": f"Plan evaluation feedback: {result.feedback}", "role": "user"})
         
         # 2. Execution phase
-        self.chain_of_thoughts.append("Ok, let me take the feedback and execute the plan. This may take a few moments.")
+        message = "Ok, let me take the feedback and execute the plan. This may take a few moments."
+        await self._post_to_slack(message)
         exec_input = plan_result.to_input_list()
         exec_result = await Runner.run(
             self.execution_agent,
