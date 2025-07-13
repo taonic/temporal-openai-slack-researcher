@@ -3,8 +3,7 @@ from config import settings
 
 from .session import Session
 from temporalio.client import Client
-from temporalio.contrib.pydantic import pydantic_data_converter
-
+from temporal.client import connect as connect_temporal
 
 class SessionManager:
     """Manages Slack sessions and their corresponding agent sessions."""
@@ -24,20 +23,7 @@ class SessionManager:
     
     async def _connect(self) -> None:
         """Connect to the Temporal server."""
-        if self.client is None:
-            connect_args = {
-                "target_host": settings.temporal_host_port,
-                "data_converter": pydantic_data_converter,
-            }
-
-            if settings.temporal_api_key:
-                connect_args.update({
-                    "namespace": settings.temporal_namespace,
-                    "api_key": settings.temporal_api_key,
-                    "tls": True,
-                })
-
-            self.client = await Client.connect(**connect_args)
+        self.client = await connect_temporal()
 
     async def get_session(self, slack_session_id: str) -> Session:
         """Get or create an agent session for the given Slack session ID."""

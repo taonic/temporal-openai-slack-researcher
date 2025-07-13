@@ -80,16 +80,12 @@ class MessageHandler:
             title = "I'm your AI research assistant. I can analyze conversations, summarize discussions, and help you find insights from your Slack workspace. How can I help you?"
             prompts: List[Dict[str, str]] = [
                 {
-                    "title": "Summarize sales team conversations about enterprise deals",
-                    "message": "Can you summarize recent sales team conversations about enterprise customer requirements and deal blockers from last week?",
+                    "title": "Show me the latest blogs on Agentic SDK from last month",
+                    "message": "Show me the latest blogs on Agentic SDK from last month",
                 },
                 {
                     "title": "Ask about the latest Golang SDK release",
                     "message": "What's new in the latest Golang SDK release from last month? Can you provide details about new features and improvements?",
-                },
-                {
-                    "title": "Summarize a thread",
-                    "message": "Let me summarize a thread for you. Note: This only works for public channels, not private channels or DMs.",
                 },
             ]
             await set_suggested_prompts(title=title, prompts=prompts)

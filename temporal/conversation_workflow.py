@@ -4,10 +4,10 @@ from temporalio import workflow
 
 from pydantic import BaseModel
 
-from research_agents.plan_agent import init_plan_agent
+from research_agents.plan_agent import init_plan_agent, PlanningResult
 from research_agents.execution_agent import init_execution_agent
 from research_agents.plan_eval_agent import init_plan_eval_agent
-from research_agents.types import EvaluationFeedback, PlanningResult
+from research_agents.types import EvaluationFeedback
 
 with workflow.unsafe.imports_passed_through():
     from agents import (
