@@ -34,6 +34,7 @@ class MessageHandler:
         input = ProcessUserMessageInput(user_input=prompt, channel_id=channel_id, thread_ts=thread_ts)
         await self.temporal_client.start_workflow(
             ConversationWorkflow.run,
+            settings.research_mode,
             id="slack_session_" + thread_ts,
             task_queue=settings.temporal_task_queue,
             start_signal=ConversationWorkflow.process_user_message.__name__,
@@ -50,8 +51,8 @@ class MessageHandler:
             title = "I'm your AI research assistant. I can analyze conversations, summarize discussions, and help you find insights from your Slack workspace. How can I help you?"
             prompts: List[Dict[str, str]] = [
                 {
-                    "title": "Show me the latest blog posts from Temporal on Agentic AI from last month",
-                    "message": "Show me the latest blog posts from Temporal on Agentic AI from last month",
+                    "title": "Show me the Temporal published blog posts on Agentic AI from last month",
+                    "message": "Show me the Temporal published blog posts on Agentic AI from last month",
                 },
                 {
                     "title": "Ask about the latest Golang SDK release",

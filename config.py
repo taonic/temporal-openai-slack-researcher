@@ -19,8 +19,9 @@ class Settings(BaseSettings):
     temporal_enable_telemetry: bool = False
 
     # LLM settings
-    model_name: str = "gpt-4o"
-    eval_model_name: str = "gpt-4o-mini"
+    model_name: str = "gpt-4.1-2025-04-14"
+    eval_model_name: str = "gpt-4.1-2025-04-14"
+    research_mode: str = "with_llm_as_judge"
 
     # Misc
     log_level: str = "INFO"

@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from research_agents.plan_agent import init_plan_agent, PlanningResult
 from research_agents.execution_agent import init_execution_agent
 from research_agents.plan_eval_agent import init_plan_eval_agent, EvaluationFeedback
+from research_agents.combined_agent import init_combined_agent
 from temporal.activities import post_to_slack, PostToSlackInput
 
 with workflow.unsafe.imports_passed_through():
@@ -22,6 +23,7 @@ with workflow.unsafe.imports_passed_through():
         ToolCallOutputItem,
         trace,
     )
+    from config import settings
 
 class ProcessUserMessageInput(BaseModel):
     user_input: str
@@ -32,13 +34,16 @@ class ProcessUserMessageInput(BaseModel):
 @workflow.defn
 class ConversationWorkflow:
     @workflow.init
-    def __init__(self):
+    def __init__(self, research_mode: str = ""):
+        self.research_mode = research_mode
         self.run_config: RunConfig = RunConfig(
+            model="gpt-4.1-2025-04-14",
             trace_include_sensitive_data=False,
         )
         self.plan_agent: Agent = init_plan_agent(now=workflow.now())
         self.plan_eval_agent: Agent = init_plan_eval_agent(workflow.now())
         self.execution_agent: Agent = init_execution_agent(now=workflow.now())
+        self.combined_agent: Agent = init_combined_agent(now=workflow.now())
         self.chat_history: list[str] = []
         self.trace_name: str = "Slack Research Bot"
         self.input_items = []
@@ -48,7 +53,7 @@ class ConversationWorkflow:
         self.channel_id: str = None
 
     @workflow.run
-    async def run(self):
+    async def run(self, research_mode: str = ""):
         await workflow.wait_condition(
             lambda: workflow.info().is_continue_as_new_suggested()
             and workflow.all_handlers_finished()
@@ -64,7 +69,10 @@ class ConversationWorkflow:
         with trace(self.trace_name, group_id=workflow.info().workflow_id):
             self.input_items.append({"content": input.user_input, "role": "user"})
             
-            result = await self._run_with_evaluation()
+            if self.research_mode == "with_llm_as_judge":
+                result = await self._run_with_judge()
+            else:
+                result = await self._run_without_judge()
             
             self._build_chat_history(result)
             self.input_items = result.to_input_list()
@@ -78,7 +86,7 @@ class ConversationWorkflow:
             
         workflow.set_current_details("\n\n".join(self.chat_history))
     
-    async def _run_with_evaluation(self) -> RunResult:
+    async def _run_with_judge(self) -> RunResult:
         """Run with explicit evaluation flow control."""
         
         plan_result = None
@@ -126,9 +134,18 @@ class ConversationWorkflow:
             self.execution_agent,
             exec_input,
             run_config=self.run_config,
+            max_turns=30,
         )
         
         return exec_result
+
+    async def _run_without_judge(self) -> RunResult:
+        """Run with combined agent (no evaluation)."""
+        return await Runner.run(
+            self.combined_agent,
+            self.input_items,
+            run_config=self.run_config,
+        )
 
     async def _post_to_slack(self, message: str) -> None:
         await workflow.execute_activity(
