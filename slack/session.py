@@ -56,14 +56,13 @@ class Session:
         handle = self.client.get_workflow_handle(self.workflow_id)
         await handle.terminate()
 
-    async def prompt(self, prompt: str, thread_ts: str = None, channel_id: str = None) -> any:
+    async def prompt(self, prompt: str, thread_ts: str = None, channel_id: str = None) -> None:
         if not self.workflow_id:
             raise RuntimeError("Session not started")
 
         handle = self.client.get_workflow_handle(self.workflow_id)
         input = ProcessUserMessageInput(user_input=prompt, thread_ts=thread_ts, channel_id=channel_id)
-        result = await handle.execute_update(
+        await handle.signal(
             ConversationWorkflow.process_user_message,
             input,
         )
-        return result

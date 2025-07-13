@@ -55,18 +55,7 @@ class ConversationWorkflow:
         )
         workflow.continue_as_new(self.input_items)
 
-    async def _post_to_slack(self, message: str) -> None:
-        await workflow.execute_activity(
-            post_to_slack,
-            PostToSlackInput(
-                message=message,
-                channel_id=self.channel_id,
-                thread_ts=self.thread_ts
-            ),
-            start_to_close_timeout=workflow.timedelta(seconds=30)
-        )
-
-    @workflow.update
+    @workflow.signal
     async def process_user_message(self, input: ProcessUserMessageInput) -> None:
         self.thread_ts = input.thread_ts
         self.channel_id = input.channel_id
@@ -79,7 +68,6 @@ class ConversationWorkflow:
             
             self._build_chat_history(result)
             self.input_items = result.to_input_list()
-        workflow.set_current_details("\n\n".join(self.chat_history))
 
         if isinstance(result.final_output, PlanningResult):
             await self._post_to_slack(result.final_output.clarifying_questions)
@@ -87,6 +75,8 @@ class ConversationWorkflow:
             await self._post_to_slack(ItemHelpers.text_message_output(result.final_output))
         else:
             await self._post_to_slack(str(result.final_output))
+            
+        workflow.set_current_details("\n\n".join(self.chat_history))
     
     async def _run_with_evaluation(self) -> RunResult:
         """Run with explicit evaluation flow control."""
@@ -140,6 +130,17 @@ class ConversationWorkflow:
         
         return exec_result
 
+    async def _post_to_slack(self, message: str) -> None:
+        await workflow.execute_activity(
+            post_to_slack,
+            PostToSlackInput(
+                message=message,
+                channel_id=self.channel_id,
+                thread_ts=self.thread_ts
+            ),
+            start_to_close_timeout=workflow.timedelta(seconds=30)
+        )
+
     def _build_chat_history(self, result: RunResult) -> None:
         for new_item in result.new_items:
                 agent_name = new_item.agent.name
@@ -161,10 +162,3 @@ class ConversationWorkflow:
                     self.chat_history.append(
                         f"{agent_name}: Skipping item: {new_item.__class__.__name__}"
                     )
-
-    @process_user_message.validator
-    def validate_process_user_message(self, input: ProcessUserMessageInput) -> None:
-        if not input.user_input:
-            raise ValueError("User input cannot be empty.")
-        if len(input.user_input) > 1000:
-            raise ValueError("User input is too long. Please limit to 1000 characters.")
