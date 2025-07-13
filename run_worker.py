@@ -4,6 +4,8 @@ import logging
 from temporal.worker import worker as temporal_worker
 
 async def worker_main():
+    """Runs Temporal worker"""
+
     logging.basicConfig(level=logging.INFO)
     interrupt_event = asyncio.Event()
     

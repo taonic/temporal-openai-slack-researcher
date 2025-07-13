@@ -1,9 +1,13 @@
 from datetime import datetime, timedelta
-from temporalio.contrib.openai_agents import workflow
+from temporalio import workflow
+from temporalio.contrib.openai_agents import workflow as agent_workflow
 from pydantic import BaseModel, Field
 
 from agents import Agent, WebSearchTool
 from research_agents.tools import get_slack_channels, search_slack
+
+with workflow.unsafe.imports_passed_through():
+    from config import settings
 
 class PlanningResult(BaseModel):
     clarifying_questions: str = Field(description="Either clarifying questions if input unclear, or detailed search plan if clear")
@@ -55,8 +59,9 @@ def init_plan_agent(now: datetime):
         instructions=get_plan_prompt(now),
         tools=[
             WebSearchTool(),
-            workflow.activity_as_tool(get_slack_channels, start_to_close_timeout=timedelta(seconds=10)),
-            workflow.activity_as_tool(search_slack, start_to_close_timeout=timedelta(seconds=10)),
+            agent_workflow.activity_as_tool(get_slack_channels, start_to_close_timeout=timedelta(seconds=10)),
+            agent_workflow.activity_as_tool(search_slack, start_to_close_timeout=timedelta(seconds=10)),
         ],
+        model=settings.model_name,
         output_type=PlanningResult,
     )

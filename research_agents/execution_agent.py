@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
-from temporalio.contrib.openai_agents import workflow
+from temporalio import workflow
+from temporalio.contrib.openai_agents import workflow as agent_workflow
 
 from agents import Agent, WebSearchTool
 from research_agents.tools import (
@@ -8,6 +9,9 @@ from research_agents.tools import (
     get_thread_messages,
     get_user_name,
 )
+
+with workflow.unsafe.imports_passed_through():
+    from config import settings
 
 def get_execution_prompt(now: datetime) -> str:
     return f"""
@@ -77,9 +81,10 @@ def init_execution_agent(now: datetime):
         instructions=get_execution_prompt(now),
         tools=[
             WebSearchTool(),
-            workflow.activity_as_tool(get_slack_channels, start_to_close_timeout=timedelta(seconds=10)),
-            workflow.activity_as_tool(search_slack, start_to_close_timeout=timedelta(seconds=10)),
-            workflow.activity_as_tool(get_thread_messages, start_to_close_timeout=timedelta(seconds=10)),
-            workflow.activity_as_tool(get_user_name, start_to_close_timeout=timedelta(seconds=10)),
+            agent_workflow.activity_as_tool(get_slack_channels, start_to_close_timeout=timedelta(seconds=10)),
+            agent_workflow.activity_as_tool(search_slack, start_to_close_timeout=timedelta(seconds=10)),
+            agent_workflow.activity_as_tool(get_thread_messages, start_to_close_timeout=timedelta(seconds=10)),
+            agent_workflow.activity_as_tool(get_user_name, start_to_close_timeout=timedelta(seconds=10)),
         ],
+        model=settings.model_name,
     )
