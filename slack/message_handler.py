@@ -7,7 +7,7 @@ from slack_bolt.adapter.socket_mode.async_handler import AsyncSocketModeHandler
 from temporalio.client import Client
 
 from config import settings
-from temporal.conversation_workflow import (
+from temporal.workflow import (
     ConversationWorkflow,
     ProcessUserMessageInput,
 )

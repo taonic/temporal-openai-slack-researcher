@@ -15,7 +15,7 @@ class EncryptionCodec(PayloadCodec):
         # We are using direct AESGCM to be compatible with samples from
         # TypeScript and Go. Pure Python samples may prefer the higher-level,
         # safer APIs.
-        self.encryptor = AESGCM(key)
+        self.crypto = AESGCM(key)
 
     async def encode(self, payloads: Iterable[Payload]) -> List[Payload]:
         # We blindly encode all payloads with the key and set the metadata
@@ -50,7 +50,7 @@ class EncryptionCodec(PayloadCodec):
 
     def encrypt(self, data: bytes) -> bytes:
         nonce = os.urandom(12)
-        return nonce + self.encryptor.encrypt(nonce, data, None)
+        return nonce + self.crypto.encrypt(nonce, data, None)
 
     def decrypt(self, data: bytes) -> bytes:
-        return self.encryptor.decrypt(data[:12], data[12:], None)
+        return self.crypto.decrypt(data[:12], data[12:], None)

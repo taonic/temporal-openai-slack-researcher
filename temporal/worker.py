@@ -10,7 +10,7 @@ from temporalio.contrib.openai_agents import (
     set_open_ai_agent_temporal_overrides,
 )
 from config import settings
-from temporal.conversation_workflow import ConversationWorkflow
+from temporal.workflow import ConversationWorkflow
 from temporal.client import connect
 from research_agents.tools import (
     get_slack_channels,
