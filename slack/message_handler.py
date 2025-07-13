@@ -1,37 +1,44 @@
-import asyncio
 import logging
 from typing import List, Dict
 
 from slack_bolt.async_app import AsyncApp
 from slack_bolt import SetStatus, Say, SetSuggestedPrompts
 from slack_bolt.adapter.socket_mode.async_handler import AsyncSocketModeHandler
-from slackstyler import SlackStyler
+from temporalio.client import Client
 
 from config import settings
-from .session_manager import SessionManager
-from .session import Session
-
-slackStyle = SlackStyler()
+from temporal.conversation_workflow import (
+    ConversationWorkflow,
+    ProcessUserMessageInput,
+)
 
 class MessageHandler:
     """Handles Slack messages and interacts with an agent session."""
-    def __init__(self, session_manager: SessionManager):
-        self.session_manager = session_manager
-        self.bot_token: str = settings.slack_bot_token
-        self.app_token: str = settings.slack_app_token
+    def __init__(self, temporal_client: Client):
+        self.temporal_client = temporal_client
 
     async def start(self):
         """Start the Slack bot."""
-        slack_app = AsyncApp(token=self.bot_token)
+        slack_app = AsyncApp(token=settings.slack_bot_token)
         self._register_handlers(slack_app)
 
-        handler = AsyncSocketModeHandler(slack_app, self.app_token)
+        handler = AsyncSocketModeHandler(slack_app, settings.slack_app_token)
         await handler.start_async()
-
 
     async def _set_thinking_status(self, set_status: SetStatus) -> None:
         """Set the status to indicate the bot is thinking."""
         await set_status("is thinking...")
+
+    async def _signal_or_start_workflow(self, prompt: str, channel_id: str, thread_ts: str) -> None:
+        """Start a new workflow or signal an existing workflow"""
+        input = ProcessUserMessageInput(user_input=prompt, channel_id=channel_id, thread_ts=thread_ts)
+        await self.temporal_client.start_workflow(
+            ConversationWorkflow.run,
+            id="slack_session_" + thread_ts,
+            task_queue=settings.temporal_task_queue,
+            start_signal=ConversationWorkflow.process_user_message.__name__,
+            start_signal_args=[input],
+        )
 
     def _register_handlers(self, slack_app: AsyncApp) -> None:
         @slack_app.event("assistant_thread_context_changed")
@@ -56,18 +63,12 @@ class MessageHandler:
         """Register event handlers for the Slack app."""
         @slack_app.event("message")
         async def handle_dm(event: dict, say: Say, set_status: SetStatus, logger: logging.Logger):
-            await self._set_thinking_status(set_status)
-            
             if event.get("channel_type") != "im" or event.get("subtype") or event.get("bot_id"):
                 return
-
-            thread_ts = event["thread_ts"]
-            channel_id = event["channel"]
 
             text = (event.get("text") or "").strip()
             if not text:
                 return
-            
-            session = await self.session_manager.get_session(thread_ts)
-            # This will block until the agent/workflow responds
-            await session.prompt(prompt=text, thread_ts=thread_ts, channel_id=channel_id)
+
+            await self._set_thinking_status(set_status)
+            await self._signal_or_start_workflow(text, channel_id = event["channel"], thread_ts = event["thread_ts"])
