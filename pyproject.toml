@@ -11,6 +11,7 @@ dependencies = [
     "pydantic-settings>=2.10.0",
     "slackstyler>=0.0.3",
     "slack-bolt>=1.23.0",
+    "cryptography>=45.0.5",
 ]
 
 

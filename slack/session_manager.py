@@ -14,7 +14,8 @@ class SessionManager:
         self.client: Client = client
     
     async def __aenter__(self):
-        await self._connect()
+        if self.client is None:
+            await self._connect()
         return self
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
