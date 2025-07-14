@@ -1,3 +1,28 @@
+# Temporal OpenAI Slack Researcher
+
+A Temporal workflow application that integrates OpenAI agents with Slack for research and conversation capabilities.
+
+## Features
+
+- Temporal workflow orchestration
+- OpenAI agent integration
+- Slack API integration for channel search and messaging
+- Thread-based conversation handling
+
+## Setup
+
+1. Install dependencies:
+```bash
+uv sync
+```
+
+2. Configure environment variables in your config file
+
+3. Run both Temporal Worker and Slack bot:
+```bash
+uv run run_both.py
+```
+
 # Agent Workflow Diagram
 
 ```mermaid
@@ -33,3 +58,10 @@ flowchart TD
 - **Channel Selection**: Identifies relevant Slack channels automatically
 - **Dual Search**: Performs both global and channel-specific searches
 - **Structured Reports**: Returns findings in organized Markdown format
+
+## Requirements
+
+- Python 3.13+
+- Temporal server
+- OpenAI API access
+- Slack API credentials
