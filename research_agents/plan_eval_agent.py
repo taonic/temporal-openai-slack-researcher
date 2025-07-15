@@ -1,5 +1,8 @@
 from datetime import datetime
-from agents import Agent
+from agents import (
+    Agent,
+    ModelSettings,
+)
 from temporalio import workflow
 from pydantic import BaseModel, Field
 
@@ -51,6 +54,7 @@ def init_plan_eval_agent(now: datetime, pass_threshold: float = 0.7):
     return Agent(
         name="Plan Evaluation Agent",
         instructions=get_plan_eval_prompt(now, pass_threshold),
+        model_settings=ModelSettings(temperature=0),
         model=settings.eval_model_name,
         output_type=EvaluationFeedback,
     )

@@ -29,17 +29,19 @@ class MessageHandler:
         """Set the status to indicate the bot is thinking."""
         await set_status("is thinking...")
 
-    async def _signal_or_start_workflow(self, prompt: str, channel_id: str, thread_ts: str) -> None:
+    async def _signal_or_start_workflow(self, prompt: str, channel_id: str, thread_ts: str) -> str:
         """Start a new workflow or signal an existing workflow"""
+        wf_id = "slack_session_" + thread_ts
         input = ProcessUserMessageInput(user_input=prompt, channel_id=channel_id, thread_ts=thread_ts)
         await self.temporal_client.start_workflow(
             ConversationWorkflow.run,
             settings.research_mode,
-            id="slack_session_" + thread_ts,
+            id=wf_id,
             task_queue=settings.temporal_task_queue,
             start_signal=ConversationWorkflow.process_user_message.__name__,
             start_signal_args=[input],
         )
+        return wf_id
 
     def _register_handlers(self, slack_app: AsyncApp) -> None:
         @slack_app.event("assistant_thread_context_changed")
@@ -51,8 +53,8 @@ class MessageHandler:
             title = "I'm your AI research assistant. I can analyze conversations, summarize discussions, and help you find insights from your Slack workspace. How can I help you?"
             prompts: List[Dict[str, str]] = [
                 {
-                    "title": "Show me the Temporal published blog posts on Agentic AI from last month",
-                    "message": "Show me the Temporal published blog posts on Agentic AI from last month",
+                    "title": "What are the most recent feature releases form Java SDK?",
+                    "message": "What are the most recent feature releases form Java SDK?",
                 },
                 {
                     "title": "Ask about the latest Golang SDK release",
@@ -72,4 +74,5 @@ class MessageHandler:
                 return
 
             await self._set_thinking_status(set_status)
-            await self._signal_or_start_workflow(text, channel_id = event["channel"], thread_ts = event["thread_ts"])
+            wf_id = await self._signal_or_start_workflow(text, channel_id = event["channel"], thread_ts = event["thread_ts"])
+            

@@ -2,7 +2,11 @@ from datetime import datetime, timedelta
 from temporalio import workflow
 from temporalio.contrib.openai_agents import workflow as agent_workflow
 
-from agents import Agent, WebSearchTool
+from agents import (
+    Agent,
+    WebSearchTool,
+    ModelSettings
+)
 from research_agents.tools import (
     get_slack_channels,
     search_slack,
@@ -80,6 +84,7 @@ def init_execution_agent(now: datetime):
     return Agent(
         name="Execution Agent",
         instructions=get_execution_prompt(now),
+        model_settings=ModelSettings(tool_choice="required", temperature=0),
         tools=[
             WebSearchTool(),
             agent_workflow.activity_as_tool(get_slack_channels, start_to_close_timeout=timedelta(seconds=10)),

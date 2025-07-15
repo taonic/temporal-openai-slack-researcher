@@ -37,7 +37,6 @@ class ConversationWorkflow:
     def __init__(self, research_mode: str = ""):
         self.research_mode = research_mode
         self.run_config: RunConfig = RunConfig(
-            model="gpt-4.1-2025-04-14",
             trace_include_sensitive_data=False,
         )
         self.plan_agent: Agent = init_plan_agent(now=workflow.now())
@@ -54,6 +53,7 @@ class ConversationWorkflow:
 
     @workflow.run
     async def run(self, research_mode: str = ""):
+        await self._post_to_slack(f"[view workflow]({settings.temporal_ui_url}/namespaces/{settings.temporal_namespace}/workflows/{workflow.info().workflow_id})")
         await workflow.wait_condition(
             lambda: workflow.info().is_continue_as_new_suggested()
             and workflow.all_handlers_finished()
@@ -69,7 +69,7 @@ class ConversationWorkflow:
         with trace(self.trace_name, group_id=workflow.info().workflow_id):
             self.input_items.append({"content": input.user_input, "role": "user"})
             
-            if self.research_mode == "with_llm_as_judge":
+            if self.research_mode == "with_judge":
                 result = await self._run_with_judge()
             else:
                 result = await self._run_without_judge()
