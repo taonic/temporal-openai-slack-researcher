@@ -4,6 +4,7 @@ import asyncio
 from datetime import timedelta
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Any
+import pprint
 
 from temporal.workflow import ConversationWorkflow, ProcessUserMessageInput
 from temporal.activities import PostToSlackInput
@@ -21,22 +22,22 @@ from temporalio.contrib.openai_agents import (
 )
 from research_agents.tools import (
     GetChannelsRequest,
+    search_slack,
+    get_thread_messages,
+    get_user_name,
 )
 from tests.models import (
-    CombinedAgentModel
+    MultiAgentModel
 )
-
-def get_payload(i: str, events) -> str:
-    events[i].activity_task_completed_event_attributes.result.payloads[0].data.decode()
 
 
 @pytest.mark.asyncio
-async def test_combined_agent(client: Client):
+async def test_llm_as_judge(client: Client):
     slack_posts: list[PostToSlackInput] = []
     
     model_activity = ModelActivity(
         TestModelProvider(
-            CombinedAgentModel()
+            MultiAgentModel()
         )
     )  
     
@@ -64,6 +65,7 @@ async def test_combined_agent(client: Client):
         ) as worker:
             handle = await client.start_workflow(
                 ConversationWorkflow.run,
+                "with_judge",
                 id=str(uuid.uuid4()),
                 task_queue=worker.task_queue,
             )
@@ -79,24 +81,5 @@ async def test_combined_agent(client: Client):
             await asyncio.sleep(0.2)
             
             assert slack_posts[0].message.startswith("[view workflow](http://localhost:8233/namespaces/default/workflows")
-            assert slack_posts[1].message == "final result"
-            
-            # todo: Rethink how and if agent internals should be tested.
-            # events = []
-            # async for e in handle.fetch_history_events():
-            #     if any(e.HasField(attr) for attr in ["activity_task_completed_event_attributes", "activity_task_scheduled_event_attributes"]):
-            #         events.append(e)
-
-            # print(events)
-            # assert len(events) == 5
-            
-            # payload = get_payload(0, events)
-            # assert payload is None
-            
-            # payload = get_payload(1, events)
-            # assert ("function_call" in payload)
-            # assert ("get_slack_channels" in payload)
-            
-            # payload = get_payload(2, events)
-            # assert ("function_call" in payload)
-            # assert ("get_slack_channels" in payload)
+            assert slack_posts[1].message.find("This is what I'm planning to do") != -1
+            assert slack_posts[1].message.find("search a,b,c") != -1

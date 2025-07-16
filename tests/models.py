@@ -10,6 +10,8 @@ from openai.types.responses import (
     ResponseOutputMessage,
     ResponseOutputText,
 )
+from research_agents.plan_agent import PlanningResult
+from research_agents.plan_eval_agent import EvaluationFeedback
 
 
 class StaticTestModel(TestModel):
@@ -52,6 +54,71 @@ class CombinedAgentModel(StaticTestModel):
                     content=[
                         ResponseOutputText(
                             text="final result",
+                            annotations=[],
+                            type="output_text",
+                        )
+                    ],
+                    role="assistant",
+                    status="completed",
+                    type="message",
+                )
+            ],
+            usage=Usage(),
+            response_id=None,
+        ),
+    ]
+
+class MultiAgentModel(StaticTestModel):
+    responses = [
+        ModelResponse(
+            output=[
+                ResponseFunctionToolCall(
+                    type="function_call",
+                    name="get_slack_channels",
+                    arguments='{"request": {"include_archived": false}}',
+                    call_id="call",
+                    id="id",
+                    status="completed",
+                )
+            ],
+            usage=Usage(),
+            response_id=None,
+        ),
+        ModelResponse(
+            output=[
+                ResponseOutputMessage(
+                    id="",
+                    content=[
+                        ResponseOutputText(
+                            text=PlanningResult(
+                                clarifying_questions="",
+                                human_input_required=False,
+                                plan="search a,b,c"
+                            ).model_dump_json(),
+                            annotations=[],
+                            type="output_text",
+                        )
+                    ],
+                    role="assistant",
+                    status="completed",
+                    type="message",
+                )
+            ],
+            usage=Usage(),
+            response_id=None,
+        ),
+        ModelResponse(
+            output=[
+                ResponseOutputMessage(
+                    id="",
+                    content=[
+                        ResponseOutputText(
+                            text=EvaluationFeedback(
+                                scores="5",
+                                total_score=20,
+                                passed=False,
+                                feedback="very good plan"
+                            ).model_dump_json(),
                             annotations=[],
                             type="output_text",
                         )
