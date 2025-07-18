@@ -6,9 +6,9 @@ with workflow.unsafe.imports_passed_through():
 
 class Settings(BaseSettings):
     # Slack settings
-    slack_bot_token: str
-    slack_app_token: str
-    slack_user_token: str
+    slack_bot_token: str = ""
+    slack_app_token: str = ""
+    slack_user_token: str = ""
 
     # Temporal settings
     temporal_namespace: str = "default"

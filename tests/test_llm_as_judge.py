@@ -23,20 +23,17 @@ from research_agents.tools import (
     GetChannelsRequest,
 )
 from tests.models import (
-    CombinedAgentModel
+    MultiAgentModel
 )
-
-def get_payload(i: str, events) -> str:
-    events[i].activity_task_completed_event_attributes.result.payloads[0].data.decode()
 
 
 @pytest.mark.asyncio
-async def test_combined_agent(client: Client):
+async def test_llm_as_judge(client: Client):
     slack_posts: list[PostToSlackInput] = []
     
     model_activity = ModelActivity(
         TestModelProvider(
-            CombinedAgentModel()
+            MultiAgentModel()
         )
     )  
     
@@ -64,6 +61,7 @@ async def test_combined_agent(client: Client):
         ) as worker:
             handle = await client.start_workflow(
                 ConversationWorkflow.run,
+                "with_judge",
                 id=str(uuid.uuid4()),
                 task_queue=worker.task_queue,
             )
@@ -80,7 +78,10 @@ async def test_combined_agent(client: Client):
             
             expected_messages = [
                 "[view workflow](http://localhost:8233/namespaces/default/workflows",
-                "final result"
+                "This is what I'm planning to do: \nsearch a,b,c",
+                "The plan has been reviewed by my team mate with the following comments: \nvery good plan",
+                "Ok, let me take the feedback and execute the plan. This may take a few moments.",
+                "my summary is blah"
             ]
             for i, message in enumerate(expected_messages, start=0):
                 assert slack_posts[i].message.startswith(message)

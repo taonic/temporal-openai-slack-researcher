@@ -1,5 +1,7 @@
 # Temporal OpenAI Slack Researcher
 
+![Tests](https://github.com/taonic/temporal-openai-slack-researcher/actions/workflows/tests.yml/badge.svg)
+
 A Temporal workflow application that integrates OpenAI agents with Slack for research and conversation capabilities.
 
 ## Features

@@ -112,7 +112,8 @@ def get_thread_messages(params: ThreadInput) -> List[Dict[str, Any]]:
         if len(url_parts) < 6:
             raise ValueError("Invalid Slack thread URL format")
         channel_id = url_parts[-2]
-        thread_ts = url_parts[-1][1:10] + '.' + url_parts[-1][10:]
+        # Ensure correct timestamp format: 10 digits, period, 6 digits
+        thread_ts = url_parts[-1][1:11] + '.' + url_parts[-1][11:17]
         client = get_slack_client()
         response = client.conversations_replies(channel=channel_id, ts=thread_ts)
         messages = response.get("messages", [])
