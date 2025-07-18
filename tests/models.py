@@ -116,7 +116,7 @@ class MultiAgentModel(StaticTestModel):
                             text=EvaluationFeedback(
                                 scores="5",
                                 total_score=20,
-                                passed=False,
+                                passed=True,
                                 feedback="very good plan"
                             ).model_dump_json(),
                             annotations=[],
@@ -131,4 +131,23 @@ class MultiAgentModel(StaticTestModel):
             usage=Usage(),
             response_id=None,
         ),
+        ModelResponse(
+            output=[
+                ResponseOutputMessage(
+                    id="",
+                    content=[
+                        ResponseOutputText(
+                            text="my summary is blah",
+                            annotations=[],
+                            type="output_text",
+                        )
+                    ],
+                    role="assistant",
+                    status="completed",
+                    type="message",
+                )
+            ],
+            usage=Usage(),
+            response_id=None,
+        ),        
     ]

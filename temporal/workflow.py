@@ -53,7 +53,6 @@ class ConversationWorkflow:
 
     @workflow.run
     async def run(self, research_mode: str = ""):
-        await self._post_to_slack(f"[view workflow]({settings.temporal_ui_url}/namespaces/{settings.temporal_namespace}/workflows/{workflow.info().workflow_id})")
         await workflow.wait_condition(
             lambda: workflow.info().is_continue_as_new_suggested()
             and workflow.all_handlers_finished()
@@ -64,7 +63,10 @@ class ConversationWorkflow:
     async def process_user_message(self, input: ProcessUserMessageInput) -> None:
         self.thread_ts = input.thread_ts
         self.channel_id = input.channel_id
-        
+
+        if len(self.chat_history) == 0:
+            await self._post_to_slack(f"[view workflow]({settings.temporal_ui_url}/namespaces/{settings.temporal_namespace}/workflows/{workflow.info().workflow_id})")
+
         self.chat_history.append(f"User: {input.user_input}")
         with trace(self.trace_name, group_id=workflow.info().workflow_id):
             self.input_items.append({"content": input.user_input, "role": "user"})
@@ -85,13 +87,13 @@ class ConversationWorkflow:
             await self._post_to_slack(str(result.final_output))
             
         workflow.set_current_details("\n\n".join(self.chat_history))
-    
+
     async def _run_with_judge(self) -> RunResult:
         """Run with explicit evaluation flow control."""
-        
+
         plan_result = None
         exec_result = None
-        
+
         # 1. Planning phase with LLM-as-a-judge
         for _ in range(self.max_evaluation_loops):
             # Run plan agent
@@ -107,7 +109,7 @@ class ConversationWorkflow:
             else:
                 message = f"This is what I'm planning to do: \n{result.plan}"
                 await self._post_to_slack(message)
-        
+
             # Evaluate plan
             eval_result = await Runner.run(
                 self.plan_eval_agent,
@@ -125,7 +127,7 @@ class ConversationWorkflow:
             # Provide feedback
             plan_input = plan_result.to_input_list()
             plan_input.append({"content": f"Plan evaluation feedback: {result.feedback}", "role": "user"})
-        
+
         # 2. Execution phase
         message = "Ok, let me take the feedback and execute the plan. This may take a few moments."
         await self._post_to_slack(message)

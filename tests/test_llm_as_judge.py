@@ -4,7 +4,6 @@ import asyncio
 from datetime import timedelta
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Any
-import pprint
 
 from temporal.workflow import ConversationWorkflow, ProcessUserMessageInput
 from temporal.activities import PostToSlackInput
@@ -22,9 +21,6 @@ from temporalio.contrib.openai_agents import (
 )
 from research_agents.tools import (
     GetChannelsRequest,
-    search_slack,
-    get_thread_messages,
-    get_user_name,
 )
 from tests.models import (
     MultiAgentModel
@@ -78,8 +74,14 @@ async def test_llm_as_judge(client: Client):
             
             await handle.signal(ConversationWorkflow.process_user_message, input)
             
-            await asyncio.sleep(0.2)
+            await asyncio.sleep(0.5)
             
-            assert slack_posts[0].message.startswith("[view workflow](http://localhost:8233/namespaces/default/workflows")
-            assert slack_posts[1].message.find("This is what I'm planning to do") != -1
-            assert slack_posts[1].message.find("search a,b,c") != -1
+            expected_messages = [
+                "[view workflow](http://localhost:8233/namespaces/default/workflows",
+                "This is what I'm planning to do: \nsearch a,b,c",
+                "The plan has been reviewed by my team mate with the following comments: \nvery good plan",
+                "Ok, let me take the feedback and execute the plan. This may take a few moments.",
+                "my summary is blah"
+            ]
+            for i, message in enumerate(expected_messages, start=0):
+                assert slack_posts[i].message.startswith(message)

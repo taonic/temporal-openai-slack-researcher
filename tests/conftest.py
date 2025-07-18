@@ -3,6 +3,7 @@ from typing import AsyncGenerator
 
 from temporalio.testing import WorkflowEnvironment
 from temporalio.client import Client
+from temporalio.contrib.pydantic import pydantic_data_converter
 
 def pytest_addoption(parser):
     parser.addoption(
@@ -13,7 +14,9 @@ def pytest_addoption(parser):
 
 @pytest_asyncio.fixture
 async def client(env: WorkflowEnvironment) -> Client:
-    return env.client
+    new_config = env.client.config()
+    new_config["data_converter"] = pydantic_data_converter
+    return Client(**new_config)
 
 @pytest_asyncio.fixture(scope="session")
 async def env(request) -> AsyncGenerator[WorkflowEnvironment, None]:
