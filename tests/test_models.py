@@ -31,7 +31,7 @@ class StaticTestModel(TestModel):
         response_index = 0
         super().__init__(self.response)
 
-class CombinedAgentModel(StaticTestModel):
+class CombinedAgentTestModel(StaticTestModel):
     responses = [
         ModelResponse(
             output=[
@@ -68,7 +68,7 @@ class CombinedAgentModel(StaticTestModel):
         ),
     ]
 
-class MultiAgentModel(StaticTestModel):
+class MultiAgentTestModel(StaticTestModel):
     responses = [
         ModelResponse(
             output=[

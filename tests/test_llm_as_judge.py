@@ -1,7 +1,6 @@
 import pytest
 import uuid
 import asyncio
-from datetime import timedelta
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Any
 
@@ -17,8 +16,8 @@ from temporalio.contrib.openai_agents import (
 from research_agents.tools import (
     GetChannelsRequest,
 )
-from tests.models import (
-    MultiAgentModel
+from tests.test_models import (
+    MultiAgentTestModel
 )
 
 
@@ -39,7 +38,7 @@ async def test_llm_as_judge(client: Client):
     new_config = client.config()
     new_config["plugins"] = [
         OpenAIAgentsPlugin(
-            model_provider=TestModelProvider(MultiAgentModel())
+            model_provider=TestModelProvider(MultiAgentTestModel())
         )
     ]
     client = Client(**new_config)        

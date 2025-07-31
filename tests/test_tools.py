@@ -1,7 +1,5 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from datetime import datetime
-import json
 
 from research_agents.tools import (
     get_slack_channels,
@@ -18,7 +16,6 @@ from research_agents.tools import (
 )
 
 class TestSlackTools:
-    
     @patch('research_agents.tools.get_slack_client')
     def test_get_slack_channels(self, mock_get_client):
         # Setup mock
