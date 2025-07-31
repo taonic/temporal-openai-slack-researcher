@@ -11,13 +11,8 @@ from temporalio.client import Client
 from temporalio.worker import Worker
 from temporalio import activity
 from temporalio.contrib.openai_agents import (
-    ModelActivity,
-)
-from temporalio.contrib.openai_agents import (
-    ModelActivity,
-    ModelActivityParameters,
+    OpenAIAgentsPlugin,
     TestModelProvider,
-    set_open_ai_agent_temporal_overrides,
 )
 from research_agents.tools import (
     GetChannelsRequest,
@@ -34,12 +29,6 @@ def get_payload(i: str, events) -> str:
 async def test_combined_agent(client: Client):
     slack_posts: list[PostToSlackInput] = []
     
-    model_activity = ModelActivity(
-        TestModelProvider(
-            CombinedAgentModel()
-        )
-    )  
-    
     # Mock activities
     @activity.defn(name="post_to_slack")
     async def mock_post_to_slack(input: PostToSlackInput) -> str:
@@ -48,39 +37,43 @@ async def test_combined_agent(client: Client):
     @activity.defn(name="get_slack_channels")
     async def mock_get_slack_channels(request: GetChannelsRequest) -> List[Dict[str, Any]]:
         []
+
+    new_config = client.config()
+    new_config["plugins"] = [
+        OpenAIAgentsPlugin(
+            model_provider=TestModelProvider(CombinedAgentModel())
+        )
+    ]
+    client = Client(**new_config)        
+    async with Worker(
+        client,
+        task_queue=str(uuid.uuid4()),
+        workflows=[ConversationWorkflow],
+        activity_executor=ThreadPoolExecutor(5),
+        activities=[
+            mock_post_to_slack,
+            mock_get_slack_channels,
+        ],
+    ) as worker:
+        handle = await client.start_workflow(
+            ConversationWorkflow.run,
+            id=str(uuid.uuid4()),
+            task_queue=worker.task_queue,
+        )
         
-    model_params = ModelActivityParameters(start_to_close_timeout=timedelta(seconds=30))
-    with set_open_ai_agent_temporal_overrides(model_params):
-        async with Worker(
-            client,
-            task_queue=str(uuid.uuid4()),
-            workflows=[ConversationWorkflow],
-            activity_executor=ThreadPoolExecutor(5),
-            activities=[
-                model_activity.invoke_model_activity,
-                mock_post_to_slack,
-                mock_get_slack_channels,
-            ],
-        ) as worker:
-            handle = await client.start_workflow(
-                ConversationWorkflow.run,
-                id=str(uuid.uuid4()),
-                task_queue=worker.task_queue,
-            )
-            
-            input = ProcessUserMessageInput(
-                user_input="test message",
-                channel_id="C123456",
-                thread_ts="123.456"
-            )
-            
-            await handle.signal(ConversationWorkflow.process_user_message, input)
-            
-            await asyncio.sleep(0.5)
-            
-            expected_messages = [
-                "[view workflow](http://localhost:8233/namespaces/default/workflows",
-                "final result"
-            ]
-            for i, message in enumerate(expected_messages, start=0):
-                assert slack_posts[i].message.startswith(message)
+        input = ProcessUserMessageInput(
+            user_input="test message",
+            channel_id="C123456",
+            thread_ts="123.456"
+        )
+        
+        await handle.signal(ConversationWorkflow.process_user_message, input)
+        
+        await asyncio.sleep(0.5)
+        
+        expected_messages = [
+            "[view workflow](http://localhost:8233/namespaces/default/workflows",
+            "final result"
+        ]
+        for i, message in enumerate(expected_messages, start=0):
+            assert slack_posts[i].message.startswith(message)

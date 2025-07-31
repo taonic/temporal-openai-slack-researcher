@@ -6,9 +6,10 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource  # type: ignore
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from temporalio.client import Client
+from temporalio.client import Client, ClientConfig
 from temporalio.converter import DataConverter
 from temporalio.contrib.pydantic import pydantic_data_converter
+from temporalio.contrib.openai_agents import OpenAIAgentsPlugin
 from temporalio.runtime import OpenTelemetryConfig, Runtime, TelemetryConfig
 
 from config import settings
@@ -17,35 +18,29 @@ from temporal.codec import EncryptionCodec
 
 async def connect() -> Client:
     print("🔌 Connecting to Temporal")
-    connect_args = {
-        "target_host": settings.temporal_host_port,
-        "data_converter": pydantic_data_converter,
-        "namespace": settings.temporal_namespace,
-    }
+    config = ClientConfig(
+        target_host=settings.temporal_host_port,
+        namespace=settings.temporal_namespace,
+        plugins=[OpenAIAgentsPlugin()],
+    )
 
     if settings.temporal_api_key:
         print("- Using API key")
-        connect_args.update({
-            "api_key": settings.temporal_api_key,
-            "tls": True,
-        })
+        config["api_key"] = settings.temporal_api_key
+        config["tls"] = True
 
     if settings.temporal_codec_key:
         print("- Encrypting payloads")
-        dataConverter = dataclasses.replace(
-            temporalio.converter.default(), payload_codec=EncryptionCodec(settings.temporal_codec_key)
-        )
-        connect_args.update({
-            "data_converter": dataConverter,
-        })
+        config["data_converter"] = dataclasses.replace(
+            temporalio.converter.default(), payload_codec=EncryptionCodec(settings.temporal_codec_key))
         
     if settings.temporal_enable_telemetry:
         print("- Enabling telemetry")
-        connect_args.update({
+        config["api_key"].update({
             "runtime": init_runtime_with_telemetry(),
         })
-
-    return await Client.connect(**connect_args)
+    print(config)
+    return await Client.connect(**config)
 
 
 def init_runtime_with_telemetry() -> Runtime:

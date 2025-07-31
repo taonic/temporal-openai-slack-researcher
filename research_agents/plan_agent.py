@@ -53,7 +53,7 @@ Your job is to plan the search based on the following steps.
 - Include any time ranges or filters that will be applied.
 - End with a confidence level: 🔴 (low), 🟡 (medium), or 🟢 (high) based on how well the available channels and keywords match the user's query.
 
-IMPORTANT: If the user's question is not clear enough or lacks sufficient detail to create an effective search plan, return clarifying questions in the clarifying_questions field and set human_input_required to true. Otherwise, return the detailed search plan in clarifying_questions field and set human_input_required to false.
+IMPORTANT: If the user's question is too vague to generate keywords for searching, return clarifying questions in the clarifying_questions field and set human_input_required to true. Otherwise, return the detailed search plan in clarifying_questions field and set human_input_required to false.
 
 Current date and time: {now.isoformat()}
 """

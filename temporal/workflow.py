@@ -93,6 +93,7 @@ class ConversationWorkflow:
 
         plan_result = None
         exec_result = None
+        plan = ""
 
         # 1. Planning phase with LLM-as-a-judge
         for _ in range(self.max_evaluation_loops):
@@ -108,6 +109,7 @@ class ConversationWorkflow:
                 return plan_result
             else:
                 message = f"This is what I'm planning to do: \n{result.plan}"
+                plan = result.plan
                 await self._post_to_slack(message)
 
             # Evaluate plan
@@ -132,6 +134,7 @@ class ConversationWorkflow:
         message = "Ok, let me take the feedback and execute the plan. This may take a few moments."
         await self._post_to_slack(message)
         exec_input = plan_result.to_input_list()
+        exec_input.append({"content": f'Final plan to execute: {plan}', "role": "user"})
         exec_result = await Runner.run(
             self.execution_agent,
             exec_input,

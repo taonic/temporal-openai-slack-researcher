@@ -53,8 +53,8 @@ class MessageHandler:
             title = "I'm your AI research assistant. I can analyze conversations, summarize discussions, and help you find insights from your Slack workspace. How can I help you?"
             prompts: List[Dict[str, str]] = [
                 {
-                    "title": "What are the most recent feature releases form Java SDK?",
-                    "message": "What are the most recent feature releases form Java SDK?",
+                    "title": "What's our latest AI marketing campaign from last month?",
+                    "message": "What's our latest AI marketing campaign?",
                 },
                 {
                     "title": "Ask about the latest Golang SDK release",

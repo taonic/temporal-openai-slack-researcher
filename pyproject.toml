@@ -7,7 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "openai-agents[litellm]>=0.0.19",
     "slack-sdk>=3.35.0",
-    "temporalio[openai-agents] >= 1.14.1",
+    "temporalio[openai-agents] >= 1.15.0",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.10.0",
     "slackstyler>=0.0.3",

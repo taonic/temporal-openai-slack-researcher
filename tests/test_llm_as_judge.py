@@ -11,13 +11,8 @@ from temporalio.client import Client
 from temporalio.worker import Worker
 from temporalio import activity
 from temporalio.contrib.openai_agents import (
-    ModelActivity,
-)
-from temporalio.contrib.openai_agents import (
-    ModelActivity,
-    ModelActivityParameters,
+    OpenAIAgentsPlugin,
     TestModelProvider,
-    set_open_ai_agent_temporal_overrides,
 )
 from research_agents.tools import (
     GetChannelsRequest,
@@ -29,13 +24,8 @@ from tests.models import (
 
 @pytest.mark.asyncio
 async def test_llm_as_judge(client: Client):
+    # Collect slack messages
     slack_posts: list[PostToSlackInput] = []
-    
-    model_activity = ModelActivity(
-        TestModelProvider(
-            MultiAgentModel()
-        )
-    )  
     
     # Mock activities
     @activity.defn(name="post_to_slack")
@@ -45,43 +35,47 @@ async def test_llm_as_judge(client: Client):
     @activity.defn(name="get_slack_channels")
     async def mock_get_slack_channels(request: GetChannelsRequest) -> List[Dict[str, Any]]:
         []
+
+    new_config = client.config()
+    new_config["plugins"] = [
+        OpenAIAgentsPlugin(
+            model_provider=TestModelProvider(MultiAgentModel())
+        )
+    ]
+    client = Client(**new_config)        
+    async with Worker(
+        client,
+        task_queue=str(uuid.uuid4()),
+        workflows=[ConversationWorkflow],
+        activity_executor=ThreadPoolExecutor(5),
+        activities=[
+            mock_post_to_slack,
+            mock_get_slack_channels,
+        ],
+    ) as worker:
+        handle = await client.start_workflow(
+            ConversationWorkflow.run,
+            "with_judge",
+            id=str(uuid.uuid4()),
+            task_queue=worker.task_queue,
+        )
         
-    model_params = ModelActivityParameters(start_to_close_timeout=timedelta(seconds=30))
-    with set_open_ai_agent_temporal_overrides(model_params):
-        async with Worker(
-            client,
-            task_queue=str(uuid.uuid4()),
-            workflows=[ConversationWorkflow],
-            activity_executor=ThreadPoolExecutor(5),
-            activities=[
-                model_activity.invoke_model_activity,
-                mock_post_to_slack,
-                mock_get_slack_channels,
-            ],
-        ) as worker:
-            handle = await client.start_workflow(
-                ConversationWorkflow.run,
-                "with_judge",
-                id=str(uuid.uuid4()),
-                task_queue=worker.task_queue,
-            )
-            
-            input = ProcessUserMessageInput(
-                user_input="test message",
-                channel_id="C123456",
-                thread_ts="123.456"
-            )
-            
-            await handle.signal(ConversationWorkflow.process_user_message, input)
-            
-            await asyncio.sleep(0.5)
-            
-            expected_messages = [
-                "[view workflow](http://localhost:8233/namespaces/default/workflows",
-                "This is what I'm planning to do: \nsearch a,b,c",
-                "The plan has been reviewed by my team mate with the following comments: \nvery good plan",
-                "Ok, let me take the feedback and execute the plan. This may take a few moments.",
-                "my summary is blah"
-            ]
-            for i, message in enumerate(expected_messages, start=0):
-                assert slack_posts[i].message.startswith(message)
+        input = ProcessUserMessageInput(
+            user_input="test message",
+            channel_id="C123456",
+            thread_ts="123.456"
+        )
+        
+        await handle.signal(ConversationWorkflow.process_user_message, input)
+        
+        await asyncio.sleep(0.5)
+        
+        expected_messages = [
+            "[view workflow](http://localhost:8233/namespaces/default/workflows",
+            "This is what I'm planning to do: \nsearch a,b,c",
+            "The plan has been reviewed by my team mate with the following comments: \nvery good plan",
+            "Ok, let me take the feedback and execute the plan. This may take a few moments.",
+            "my summary is blah"
+        ]
+        for i, message in enumerate(expected_messages, start=0):
+            assert slack_posts[i].message.startswith(message)
